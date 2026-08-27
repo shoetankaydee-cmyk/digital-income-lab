@@ -1,5 +1,9 @@
 <!DOCTYPE html>  <html lang="en">  
 <head>  
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <meta charset="UTF-8">  
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
     <title>Digital Income Lab | Enterprise</title>  
@@ -133,6 +137,29 @@ word-wrap: break-word !important;
 
     padding:20px;
     box-sizing:border-box;
+}
+.videoUploadSpinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: videoUploadSpin 0.8s linear infinite;
+    vertical-align: -2px;
+}
+
+@keyframes videoUploadSpin {
+
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+
 }
 </style>
 
@@ -2076,23 +2103,6 @@ let analyticsPeriod = "7days";
             class="btn btn-primary">
             📄 Download PDF
         </a>
-<div style="display:flex;justify-content:space-between;margin-top:20px;gap:10px;">
-
-    <button
-        class="btn btn-dark"
-        style="flex:1;"
-        onclick="previousLesson()">
-        ⏮ Previous
-    </button>
-
-    <button
-        class="btn btn-primary"
-        style="flex:1;"
-        onclick="nextLesson()">
-        Next ⏭
-    </button>
-
-</div>
         <div style="display:flex;justify-content:space-between;margin-top:20px;">
 
             <button
@@ -2807,7 +2817,7 @@ function loadCreatorAnalytics() {
         <input
             type="text"
             id="refLinkInput"
-            value="https://digitalincomelab.com/ref/YOUR_ID"
+            value=""
             readonly
             style="
                 margin:0;
@@ -5052,10 +5062,106 @@ function addLesson(moduleId) {
             class="lessonTitle"  
             placeholder="Lesson Title">  
   
-        <input  
-            class="lessonVideo"  
-            placeholder="Video URL (Google Drive, Vimeo, Bunny, YouTube Unlisted...)">  
-  
+<!-- =================================================
+     LESSON VIDEO SOURCE
+================================================= -->
+
+<div style="margin-top:12px;">
+
+    <label style="
+        display:block;
+        font-weight:bold;
+        margin-bottom:6px;
+    ">
+        🎬 Video Source
+    </label>
+
+    <select
+        class="lessonVideoSource"
+        onchange="toggleLessonVideoSource(this)"
+        style="
+            width:100%;
+            margin-bottom:10px;
+        "
+    >
+
+        <option value="url">
+            🔗 Use Video URL
+        </option>
+
+        <option value="upload">
+            📤 Upload Video File
+        </option>
+
+    </select>
+
+
+    <!-- ===============================
+         URL OPTION
+    ================================ -->
+
+    <div class="lessonUrlBox">
+
+        <input
+            class="lessonVideo"
+            placeholder="Paste video URL (Google Drive, Vimeo, Bunny, YouTube Unlisted...)"
+        >
+
+    </div>
+
+
+    <!-- ===============================
+         UPLOAD OPTION
+    ================================ -->
+
+    <div
+        class="lessonUploadBox"
+        style="display:none;"
+    >
+
+<input
+    type="file"
+    class="lessonVideoFile"
+    accept="video/*"
+    onchange="uploadLessonVideo(this)"
+>
+
+        <div
+            class="lessonUploadStatus"
+            style="
+                margin-top:8px;
+                font-size:13px;
+                color:#64748b;
+            "
+        >
+            Select a video file to upload.
+        </div>
+
+        <div
+            class="lessonUploadProgress"
+            style="
+                display:none;
+                margin-top:8px;
+                height:8px;
+                background:#e2e8f0;
+                border-radius:20px;
+                overflow:hidden;
+            "
+        >
+
+            <div
+                class="lessonUploadProgressBar"
+                style="
+                    width:0%;
+                    height:100%;
+                "
+            ></div>
+
+        </div>
+
+    </div>
+
+</div>
         <input  
             class="lessonPdf"  
             placeholder="Lesson PDF (Optional)">  
@@ -5069,6 +5175,561 @@ document
     .querySelector("#" + moduleId + " .lessonContainer")  
     .insertAdjacentHTML("beforeend", html);
 
+}
+/* =====================================================
+   🎬 SWITCH LESSON VIDEO SOURCE
+===================================================== */
+
+function toggleLessonVideoSource(select) {
+
+    const lesson =
+        select.closest(".lesson");
+
+    if (!lesson) return;
+
+    const urlBox =
+        lesson.querySelector(".lessonUrlBox");
+
+    const uploadBox =
+        lesson.querySelector(".lessonUploadBox");
+
+    if (select.value === "upload") {
+
+        if (urlBox) {
+            urlBox.style.display = "none";
+        }
+
+        if (uploadBox) {
+            uploadBox.style.display = "block";
+        }
+
+    } else {
+
+        if (urlBox) {
+            urlBox.style.display = "block";
+        }
+
+        if (uploadBox) {
+            uploadBox.style.display = "none";
+        }
+
+    }
+
+}
+async function uploadLessonVideo(input) {
+
+    const lesson =
+        input.closest(".lesson");
+
+    if (!lesson) {
+        return;
+    }
+
+    const file =
+        input.files?.[0];
+
+    if (!file) {
+        return;
+    }
+
+
+    /* =====================================================
+       ELEMENTS
+    ===================================================== */
+
+    const status =
+        lesson.querySelector(
+            ".lessonUploadStatus"
+        );
+
+    const progress =
+        lesson.querySelector(
+            ".lessonUploadProgress"
+        );
+
+    const progressBar =
+        lesson.querySelector(
+            ".lessonUploadProgressBar"
+        );
+
+
+    /* =====================================================
+       🔒 PREVENT DUPLICATE UPLOAD
+    ===================================================== */
+
+    if (
+        lesson.dataset.uploading === "true"
+    ) {
+
+        alert(
+            "⏳ This video is already uploading."
+        );
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       🎥 VIDEO VALIDATION
+    ===================================================== */
+
+    if (
+        !file.type ||
+        !file.type.startsWith("video/")
+    ) {
+
+        alert(
+            "⚠️ Please select a valid video file."
+        );
+
+        input.value = "";
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       📦 FILE SIZE VALIDATION
+       Maximum: 2 GB
+    ===================================================== */
+
+    const MAX_VIDEO_SIZE =
+        2 * 1024 * 1024 * 1024;
+
+
+    if (
+        file.size >
+        MAX_VIDEO_SIZE
+    ) {
+
+        alert(
+            "⚠️ Video is too large.\n\n" +
+            "Maximum allowed size is 2 GB."
+        );
+
+        input.value = "";
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       CURRENT USER
+    ===================================================== */
+
+    const user =
+        auth.currentUser;
+
+
+    if (!user) {
+
+        alert(
+            "⚠️ Please sign in before uploading a video."
+        );
+
+        input.value = "";
+
+        return;
+
+    }
+
+
+    try {
+
+        lesson.dataset.uploading =
+            "true";
+
+
+        /* =================================================
+           UI — PREPARING
+        ================================================= */
+
+        if (status) {
+
+            status.innerText =
+                "⏳ Preparing video upload...";
+
+        }
+
+        if (progress) {
+
+            progress.style.display =
+                "block";
+
+        }
+
+        if (progressBar) {
+
+            progressBar.style.width =
+                "5%";
+
+        }
+
+
+        /* =================================================
+           FIREBASE TOKEN
+        ================================================= */
+
+        const idToken =
+            await user.getIdToken();
+
+
+        /* =================================================
+           VIDEO TITLE
+        ================================================= */
+
+        const titleInput =
+            lesson.querySelector(
+                ".lessonTitle"
+            );
+
+        const title =
+            titleInput?.value.trim() ||
+            file.name;
+
+
+        /* =================================================
+           CREATE BUNNY VIDEO
+        ================================================= */
+
+        const createResponse =
+            await fetch(
+                "https://digital-income-laboratory-backend.vercel.app/bunny/create-video",
+                {
+
+                    method:
+                        "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json",
+
+                        "Authorization":
+                            "Bearer " +
+                            idToken
+
+                    },
+
+                    body:
+                        JSON.stringify({
+                            title
+                        })
+
+                }
+            );
+
+
+        const createData =
+            await createResponse.json();
+
+
+        if (
+            !createResponse.ok ||
+            !createData.success
+        ) {
+
+            throw new Error(
+                createData.error ||
+                "Could not create Bunny video."
+            );
+
+        }
+
+
+        const videoId =
+            createData.videoId;
+
+        const libraryId =
+            createData.libraryId;
+
+
+        if (!videoId) {
+
+            throw new Error(
+                "Bunny did not return a video ID."
+            );
+
+        }
+
+
+        /* =================================================
+           📤 UPLOAD VIDEO — LIVE ANIMATION
+        ================================================= */
+
+        if (status) {
+
+            status.innerHTML =
+                '<span class="videoUploadSpinner"></span>' +
+                '<span>📤 Uploading video to Digital Income Lab...</span>';
+
+        }
+
+        if (progress) {
+
+            progress.style.display =
+                "block";
+
+        }
+
+        if (progressBar) {
+
+            progressBar.style.width =
+                "20%";
+
+            progressBar.style.transition =
+                "width 0.4s ease";
+
+        }
+
+
+        /* =================================================
+           ANIMATED UPLOAD STATE
+        ================================================= */
+
+        let uploadAnimation =
+            20;
+
+
+        const uploadAnimationTimer =
+            setInterval(() => {
+
+                if (
+                    uploadAnimation < 90
+                ) {
+
+                    uploadAnimation += 2;
+
+                    if (progressBar) {
+
+                        progressBar.style.width =
+                            uploadAnimation + "%";
+
+                    }
+
+                }
+
+            }, 500);
+
+
+        /* =================================================
+           ACTUAL UPLOAD
+        ================================================= */
+
+        let uploadResponse;
+
+        try {
+
+            uploadResponse =
+                await fetch(
+
+                    "https://digital-income-laboratory-backend.vercel.app/bunny/upload-video?videoId=" +
+                    encodeURIComponent(
+                        videoId
+                    ),
+
+                    {
+
+                        method:
+                            "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/octet-stream",
+
+                            "Authorization":
+                                "Bearer " +
+                                idToken
+
+                        },
+
+                        body:
+                            file
+
+                    }
+
+                );
+
+        } finally {
+
+            clearInterval(
+                uploadAnimationTimer
+            );
+
+        }
+
+
+        /* =================================================
+           READ UPLOAD RESPONSE
+        ================================================= */
+
+        const uploadResponseText =
+            await uploadResponse.text();
+
+
+        let uploadData = {};
+
+        try {
+
+            uploadData =
+                uploadResponseText
+                    ? JSON.parse(
+                        uploadResponseText
+                    )
+                    : {};
+
+        } catch {
+
+            throw new Error(
+                "The upload server returned an invalid response."
+            );
+
+        }
+
+
+        if (
+            !uploadResponse.ok ||
+            !uploadData.success
+        ) {
+
+            throw new Error(
+                uploadData.error ||
+                "Bunny video upload failed."
+            );
+
+        }
+
+
+        /* =================================================
+           SAVE BUNNY DATA ON LESSON
+        ================================================= */
+
+        lesson.dataset.videoSource =
+            "bunny";
+
+        lesson.dataset.bunnyVideoId =
+            videoId;
+
+        lesson.dataset.bunnyLibraryId =
+            libraryId;
+
+        lesson.dataset.videoUrl =
+            "https://iframe.mediadelivery.net/embed/" +
+            libraryId +
+            "/" +
+            videoId;
+
+
+        /* =================================================
+           SUCCESS
+        ================================================= */
+
+        if (progressBar) {
+
+            progressBar.style.width =
+                "100%";
+
+        }
+
+        if (status) {
+
+            status.innerText =
+                "✅ Video uploaded successfully.";
+
+        }
+
+
+        console.log(
+            "🐰 Bunny upload complete:",
+            {
+
+                videoId,
+
+                libraryId,
+
+                fileName:
+                    file.name,
+
+                fileSize:
+                    file.size
+
+            }
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "🐰 Bunny upload error:",
+            error
+        );
+
+
+        /* =================================================
+           CLEAR FAILED BUNNY STATE
+        ================================================= */
+
+        delete lesson.dataset.bunnyVideoId;
+
+        delete lesson.dataset.bunnyLibraryId;
+
+        delete lesson.dataset.videoUrl;
+
+
+        if (status) {
+
+            status.innerText =
+                "❌ Upload failed. Please try again.";
+
+        }
+
+
+        if (progressBar) {
+
+            progressBar.style.width =
+                "0%";
+
+        }
+
+
+        alert(
+
+            "❌ BUNNY VIDEO UPLOAD ERROR\n\n" +
+
+            "Message: " +
+
+            (
+                error instanceof Error
+                    ? error.message
+                    : "Unknown error"
+            ) +
+
+            "\n\nVideo: " +
+
+            file.name +
+
+            "\n\nSize: " +
+
+            (
+                file.size /
+                (1024 * 1024)
+            ).toFixed(2) +
+
+            " MB"
+
+        );
+
+
+    } finally {
+
+        lesson.dataset.uploading =
+            "false";
+
+    }
 }
 // =========================
 // SHOPPING CART
@@ -6037,6 +6698,24 @@ function() {
     if (user) {
 
         console.log("🟢 AUTH STATE: USER LOGGED IN");
+        // =====================================================
+// 🔗 SET USER AFFILIATE LINK
+// =====================================================
+
+const refLinkInput =
+    document.getElementById("refLinkInput");
+
+if (refLinkInput) {
+
+    refLinkInput.value =
+    "https://digital-income-lab.vercel.app/ref/" +
+    user.uid;
+
+    console.log(
+        "🔗 AFFILIATE LINK:",
+        refLinkInput.value
+    );
+}
 
         // Hide login overlay
         if (overlay) {
@@ -6429,20 +7108,18 @@ function playLesson(moduleIndex, lessonIndex){
     currentModuleIndex = moduleIndex;
     currentLessonIndex = lessonIndex;
 
-
     const lesson =
         currentCourse.modules[moduleIndex].lessons[lessonIndex];
-
 
     document.querySelectorAll("[id^='lesson-']").forEach(el => {
         el.style.background = "#f8fafc";
         el.style.color = "#000";
     });
 
-
     const activeLesson =
-        document.getElementById(`lesson-${moduleIndex}-${lessonIndex}`);
-
+        document.getElementById(
+            `lesson-${moduleIndex}-${lessonIndex}`
+        );
 
     if(activeLesson){
         activeLesson.style.background = "#0f172a";
@@ -6450,69 +7127,171 @@ function playLesson(moduleIndex, lessonIndex){
     }
 
 
-    // YouTube player
-    const iframe = document.getElementById("lessonPlayer");
+    /* =====================================================
+       🎬 LESSON PLAYER
+    ===================================================== */
+
+    const iframe =
+        document.getElementById("lessonPlayer");
 
 
-    if(lesson.videoUrl){
+    if(iframe){
 
-        let videoId = "";
+        /* =================================================
+           🐰 BUNNY STREAM VIDEO
+        ================================================= */
 
+        if(
+            lesson.videoSource === "bunny" &&
+            lesson.bunnyVideoId
+        ){
 
-        if(lesson.videoUrl.includes("youtu.be/")){
-
-            videoId = lesson.videoUrl.split("youtu.be/")[1]
-            .split("?")[0];
+            iframe.src =
+                "https://iframe.mediadelivery.net/embed/" +
+                "737480/" +
+                lesson.bunnyVideoId +
+                "?autoplay=false&preload=true";
 
         }
-        else if(lesson.videoUrl.includes("youtube.com")){
-
-            videoId =
-            new URL(lesson.videoUrl)
-            .searchParams.get("v");
-
-        }
 
 
-        if(videoId){
+        /* =================================================
+           🔗 NORMAL VIDEO URL
+        ================================================= */
 
-iframe.src =
-"https://www.youtube.com/embed/" +
-videoId +
-"?rel=0&playsinline=1";
+        else if(lesson.videoUrl){
+
+            let videoId = "";
+
+
+            /* ---------------------------------------------
+               YOUTUBE SHORT URL
+            --------------------------------------------- */
+
+            if(
+                lesson.videoUrl.includes("youtu.be/")
+            ){
+
+                videoId =
+                    lesson.videoUrl
+                        .split("youtu.be/")[1]
+                        .split("?")[0];
+
+            }
+
+
+            /* ---------------------------------------------
+               YOUTUBE NORMAL URL
+            --------------------------------------------- */
+
+            else if(
+                lesson.videoUrl.includes("youtube.com")
+            ){
+
+                try{
+
+                    videoId =
+                        new URL(
+                            lesson.videoUrl
+                        )
+                        .searchParams
+                        .get("v");
+
+                }catch(error){
+
+                    console.error(
+                        "Invalid YouTube URL:",
+                        error
+                    );
+
+                }
+
+            }
+
+
+            /* ---------------------------------------------
+               LOAD YOUTUBE
+            --------------------------------------------- */
+
+            if(videoId){
+
+                iframe.src =
+                    "https://www.youtube.com/embed/" +
+                    videoId +
+                    "?rel=0&playsinline=1";
+
+            }
+
+
+            /* ---------------------------------------------
+               OTHER DIRECT VIDEO URL
+            --------------------------------------------- */
+
+            else{
+
+                iframe.src =
+                    lesson.videoUrl;
+
+            }
 
         }
 
     }
 
 
-    document.getElementById("lessonTitle").innerText =
-        lesson.title || "Untitled Lesson";
+    /* =====================================================
+       LESSON INFORMATION
+    ===================================================== */
+
+    document.getElementById(
+        "lessonTitle"
+    ).innerText =
+        lesson.title ||
+        "Untitled Lesson";
 
 
-    document.getElementById("lessonDescription").innerText =
-        lesson.description || "";
+    document.getElementById(
+        "lessonDescription"
+    ).innerText =
+        lesson.description ||
+        "";
 
 
-    const pdf = document.getElementById("lessonPdf");
+    /* =====================================================
+       📄 LESSON PDF
+    ===================================================== */
+
+    const pdf =
+        document.getElementById(
+            "lessonPdf"
+        );
 
 
     if(lesson.pdf){
 
-        pdf.href = lesson.pdf;
-        pdf.style.display = "inline-block";
+        pdf.href =
+            lesson.pdf;
+
+        pdf.style.display =
+            "inline-block";
 
     }else{
 
-        pdf.style.display = "none";
+        pdf.style.display =
+            "none";
 
     }
 
 
+    /* =====================================================
+       📊 SAVE PROGRESS
+    ===================================================== */
+
     updateProgress();
 
 
-    const user = auth.currentUser;
+    const user =
+        auth.currentUser;
 
 
     if(user){
@@ -6524,9 +7303,16 @@ videoId +
             currentCourse.id
         ).set({
 
-            moduleIndex: currentModuleIndex,
-            lessonIndex: currentLessonIndex,
-            updatedAt: firebase.database.ServerValue.TIMESTAMP
+            moduleIndex:
+                currentModuleIndex,
+
+            lessonIndex:
+                currentLessonIndex,
+
+            updatedAt:
+                firebase.database
+                    .ServerValue
+                    .TIMESTAMP
 
         });
 
@@ -6730,42 +7516,99 @@ document.querySelectorAll(".course-module").forEach((moduleBox, moduleIndex) => 
 
     const lessonList = [];  
 
-    moduleBox.querySelectorAll(".lesson").forEach((lessonBox, lessonIndex) => {  
+    moduleBox.querySelectorAll(".lesson").forEach((lessonBox, lessonIndex) => {
 
-        lessonList.push({  
+    const videoSource =
+        lessonBox.querySelector(".lessonVideoSource")?.value || "url";
 
-            lessonId: "lesson_" + Date.now() + "_" + lessonIndex,  
 
-            title: lessonBox.querySelector(".lessonTitle")?.value || "",  
+    /* =================================================
+       🐰 BUNNY VIDEO VALIDATION
+    ================================================= */
 
-            videoUrl: lessonBox.querySelector(".lessonVideo")?.value || "",  
+    if (
+        videoSource === "upload" &&
+        !lessonBox.dataset.bunnyVideoId
+    ) {
 
-            description: lessonBox.querySelector(".lessonDescription")?.value || "",  
+        throw new Error(
+            "Lesson " +
+            (lessonIndex + 1) +
+            " has a video upload that has not finished."
+        );
 
-            pdf: lessonBox.querySelector(".lessonPdf")?.value || "",  
+    }
 
-            completed: false,  
 
-            order: lessonIndex + 1  
+    const videoUrl =
+        lessonBox.dataset.videoUrl ||
+        lessonBox.querySelector(".lessonVideo")?.value ||
+        "";
 
-        });  
 
-    });  
+    const bunnyVideoId =
+        lessonBox.dataset.bunnyVideoId || "";
 
-    modules.push({  
 
-        moduleId: "module_" + Date.now() + "_" + moduleIndex,  
+    lessonList.push({
 
-        title: moduleBox.querySelector(".moduleTitle")?.value || "",  
+        lessonId:
+            "lesson_" +
+            Date.now() +
+            "_" +
+            lessonIndex,
 
-        order: moduleIndex + 1,  
+        title:
+            lessonBox.querySelector(
+                ".lessonTitle"
+            )?.value || "",
 
-        lessons: lessonList  
+        videoSource:
+            videoSource,
 
-    });  
+        videoUrl:
+            videoUrl,
+
+        bunnyVideoId:
+            bunnyVideoId,
+bunnyLibraryId:
+    lessonBox.dataset.bunnyLibraryId || "",
+        description:
+            lessonBox.querySelector(
+                ".lessonDescription"
+            )?.value || "",
+
+        pdf:
+            lessonBox.querySelector(
+                ".lessonPdf"
+            )?.value || "",
+
+        completed:
+            false,
+
+        order:
+            lessonIndex + 1
+
+    });
 
 });
 
+modules.push({
+
+    moduleId:
+        "module_" + Date.now() + "_" + moduleIndex,
+
+    title:
+        moduleBox.querySelector(".moduleTitle")?.value || "",
+
+    order:
+        moduleIndex + 1,
+
+    lessons:
+        lessonList
+
+});
+    });  
 }
 
 console.log("Publishing...", {
@@ -7423,8 +8266,9 @@ if (typeof window.openProductDetails !== "function") {
             params.get("product");
 
         const resellerId =
-            params.get("ref");
-
+    params.get("ref") ||
+    window.location.pathname.split("/ref/")[1] ||
+    "";
         console.log(
             "🔗 URL PRODUCT ID:",
             productId || "NONE"
@@ -7519,6 +8363,403 @@ if (typeof window.openProductDetails !== "function") {
     }
 
 })();
+window.editCourse = async function(productId) {
+
+    try {
+
+        const user =
+            typeof auth !== "undefined"
+                ? auth.currentUser
+                : null;
+
+        if (!user) {
+            alert("⚠️ Please sign in first.");
+            return;
+        }
+
+        if (!productId) {
+            alert("❌ Course ID is missing.");
+            return;
+        }
+
+        const snapshot =
+            await db
+                .ref("products/" + productId)
+                .once("value");
+
+        if (!snapshot.exists()) {
+            alert("❌ Course could not be found.");
+            return;
+        }
+
+        const course =
+            snapshot.val();
+
+        const creatorUid =
+            course.creatorUid ||
+            course.publisherId ||
+            "";
+
+        if (creatorUid !== user.uid) {
+
+            alert(
+                "🚫 You can only edit your own course."
+            );
+
+            return;
+        }
+
+        const productType =
+            course.productType ||
+            course.type ||
+            "";
+
+        if (productType !== "course") {
+
+            alert(
+                "⚠️ This editor is for courses only."
+            );
+
+            return;
+        }
+
+        /* =============================================
+           BASIC COURSE INFORMATION
+        ============================================= */
+
+        const setValue = function(id, value) {
+
+            const element =
+                document.getElementById(id);
+
+            if (element) {
+                element.value = value || "";
+            }
+
+        };
+
+        setValue(
+            "pName",
+            course.title ||
+            course.productName
+        );
+
+        setValue(
+            "pPrice",
+            course.price
+        );
+
+        setValue(
+            "pStrikePrice",
+            course.strikePrice
+        );
+
+        setValue(
+            "pDesc",
+            course.description
+        );
+
+        setValue(
+            "courseCategory",
+            course.category
+        );
+
+        setValue(
+            "courseLevel",
+            course.difficulty
+        );
+
+        setValue(
+            "uploaderNickname",
+            course.creatorName
+        );
+
+        setValue(
+            "courseDuration",
+            course.duration
+        );
+
+        /* =============================================
+           COURSE TYPE
+        ============================================= */
+
+        const typeSelect =
+            document.getElementById("pType");
+
+        if (typeSelect) {
+            typeSelect.value = "course";
+        }
+
+        const builder =
+            document.getElementById(
+                "courseBuilderArea"
+            );
+
+        if (builder) {
+            builder.style.display = "block";
+        }
+
+        /* =============================================
+           MODULE CONTAINER
+        ============================================= */
+
+        const container =
+            document.getElementById(
+                "modulesContainer"
+            );
+
+        if (!container) {
+
+            alert(
+                "❌ Course builder container not found."
+            );
+
+            return;
+        }
+
+        container.innerHTML = "";
+
+        moduleCounter = 0;
+        lessonCounter = 0;
+
+        /* =============================================
+           LOAD MODULES
+        ============================================= */
+
+        const modules =
+            Array.isArray(course.modules)
+                ? course.modules
+                : [];
+
+        modules.forEach(function(moduleData) {
+
+            addModule();
+
+            const moduleBox =
+                container.lastElementChild;
+
+            if (!moduleBox) {
+                return;
+            }
+
+            const moduleTitle =
+                moduleBox.querySelector(
+                    ".moduleTitle"
+                );
+
+            if (moduleTitle) {
+
+                moduleTitle.value =
+                    moduleData.title || "";
+
+            }
+
+            const lessons =
+                Array.isArray(moduleData.lessons)
+                    ? moduleData.lessons
+                    : [];
+
+            lessons.forEach(function(lessonData) {
+
+                addLesson(
+                    moduleBox.id
+                );
+
+                const lessonContainer =
+                    moduleBox.querySelector(
+                        ".lessonContainer"
+                    );
+
+                if (!lessonContainer) {
+                    return;
+                }
+
+                const lessonBox =
+                    lessonContainer.lastElementChild;
+
+                if (!lessonBox) {
+                    return;
+                }
+
+                const lessonTitle =
+                    lessonBox.querySelector(
+                        ".lessonTitle"
+                    );
+
+                const videoSource =
+                    lessonBox.querySelector(
+                        ".lessonVideoSource"
+                    );
+
+                const videoInput =
+                    lessonBox.querySelector(
+                        ".lessonVideo"
+                    );
+
+                const lessonPdf =
+                    lessonBox.querySelector(
+                        ".lessonPdf"
+                    );
+
+                const lessonDescription =
+                    lessonBox.querySelector(
+                        ".lessonDescription"
+                    );
+
+                if (lessonTitle) {
+
+                    lessonTitle.value =
+                        lessonData.title || "";
+
+                }
+
+                if (lessonPdf) {
+
+                    lessonPdf.value =
+                        lessonData.pdf || "";
+
+                }
+
+                if (lessonDescription) {
+
+                    lessonDescription.value =
+                        lessonData.description || "";
+
+                }
+
+                /* =====================================
+                   RESTORE VIDEO
+                ===================================== */
+
+                if (
+                    lessonData.videoSource ===
+                    "bunny"
+                ) {
+
+                    lessonBox.dataset.videoSource =
+                        "bunny";
+
+                    lessonBox.dataset.bunnyVideoId =
+                        lessonData.bunnyVideoId || "";
+
+                    lessonBox.dataset.bunnyLibraryId =
+                        lessonData.bunnyLibraryId || "";
+
+                    lessonBox.dataset.videoUrl =
+                        lessonData.videoUrl || "";
+
+                    if (videoSource) {
+
+                        videoSource.value =
+                            "upload";
+
+                        toggleLessonVideoSource(
+                            videoSource
+                        );
+
+                    }
+
+                } else {
+
+                    if (videoSource) {
+
+                        videoSource.value =
+                            "url";
+
+                        toggleLessonVideoSource(
+                            videoSource
+                        );
+
+                    }
+
+                    if (videoInput) {
+
+                        videoInput.value =
+                            lessonData.videoUrl || "";
+
+                    }
+
+                }
+
+            });
+
+        });
+
+        /* =============================================
+           REMEMBER EDITING COURSE
+        ============================================= */
+
+        window.editingCourseId =
+            productId;
+
+        window.editingCourseCover =
+            course.image ||
+            course.coverImageUrl ||
+            "";
+
+        /* =============================================
+           CHANGE PUBLISH BUTTON
+        ============================================= */
+
+        const publishButton =
+            document.querySelector(
+                '[onclick*="publishAssetWithLoader"]'
+            );
+
+        if (publishButton) {
+
+            publishButton.innerText =
+                "💾 Save Course Changes";
+
+            publishButton.onclick =
+                function(event) {
+
+                    event.preventDefault();
+
+                    saveEditedCourse(
+                        productId
+                    );
+
+                };
+
+        }
+
+        /* =============================================
+           OPEN COURSE BUILDER VIEW
+        ============================================= */
+
+        if (
+            typeof showView ===
+            "function"
+        ) {
+
+            showView("upload");
+
+        }
+
+        console.log(
+            "✏️ Course loaded for editing:",
+            productId
+        );
+
+    } catch (error) {
+
+        console.error(
+            "❌ Course editing error:",
+            error
+        );
+
+        alert(
+            "⚠️ Could not open course editor.\n\n" +
+            (
+                error.message ||
+                "Please try again."
+            )
+        );
+
+    }
+
+};
 </script>
 <script>
 /* =====================================================
@@ -7649,7 +8890,15 @@ window.openProductDetails = async function(productId) {
             product.creatorUid ||
             product.publisherId ||
             "";
+const currentUser =
+    typeof auth !== "undefined"
+        ? auth.currentUser
+        : null;
 
+const isCourseOwner =
+    isCourse &&
+    currentUser &&
+    currentUser.uid === creatorUid;
         const creatorIsElite =
             product.creatorIsElite === true;
 
@@ -7897,7 +9146,30 @@ if (isCourse) {
         /* =============================================
            PRODUCT DETAILS HTML
            ============================================= */
-
+const editCourseHTML =
+    isCourseOwner
+        ? `
+            <button
+                type="button"
+                onclick="editCourse('${productId}')"
+                style="
+                    width:100%;
+                    border:1px solid #0f172a;
+                    padding:13px 10px;
+                    border-radius:11px;
+                    background:#fff;
+                    color:#0f172a;
+                    font-size:.82rem;
+                    font-weight:900;
+                    cursor:pointer;
+                    margin-bottom:10px;
+                "
+            >
+                ✏️ Edit Course
+            </button>
+        `
+        : "";
+        
         detailsView.innerHTML = `
 
             <div style="
@@ -8279,14 +9551,16 @@ if (isCourse) {
                                     : "ebook"
                                 }
                             </h3>
+<div style="
+    color: #334155;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 0.95rem;
+    line-height: 1.8;
+    white-space: pre-wrap;
+">
+    ${description}
+</div>
 
-                            <div style="
-                                color:#475569;
-                                font-size:.88rem;
-                                line-height:1.75;
-                                white-space:pre-wrap;
-                            ">     ${description}
-                            </div>
 
                         </div>
 
@@ -8305,7 +9579,7 @@ if (isCourse) {
                             background:#f8fafc;
                             border:1px solid #e5e7eb;
                         ">
-
+${editCourseHTML}
                             <div style="
                                 display:flex;
                                 align-items:flex-end;
@@ -8665,7 +9939,658 @@ window.closeProductDetails = function() {
 
     window.scrollTo(0,0);
 };
+/* =====================================================
+   ✏️ SAVE EDITED COURSE
+   Updates existing Firebase product
+===================================================== */
 
+window.saveEditedCourse = async function(productId) {
+
+    /* =================================================
+       💾 SAVE LOADING STATE
+    ================================================= */
+
+    const saveButton =
+        document.querySelector(
+            '[onclick*="saveEditedCourse"]'
+        );
+
+    const originalButtonText =
+        saveButton
+            ? saveButton.innerHTML
+            : "💾 Save Course Changes";
+
+    if (saveButton) {
+
+        saveButton.disabled = true;
+
+        saveButton.style.opacity = "0.7";
+
+        saveButton.style.cursor = "wait";
+
+        saveButton.innerHTML =
+            `
+            <span style="
+                display:inline-flex;
+                align-items:center;
+                justify-content:center;
+                gap:8px;
+            ">
+                <span style="
+                    width:14px;
+                    height:14px;
+                    border:2px solid rgba(255,255,255,.35);
+                    border-top-color:#fff;
+                    border-radius:50%;
+                    display:inline-block;
+                    animation:dilSaveSpin .7s linear infinite;
+                "></span>
+
+                Saving changes...
+            </span>
+            `;
+
+    }
+
+    /* =================================================
+       SAVE SPINNER ANIMATION
+    ================================================= */
+
+    if (
+        !document.getElementById(
+            "dilSaveSpinnerStyle"
+        )
+    ) {
+
+        const style =
+            document.createElement("style");
+
+        style.id =
+            "dilSaveSpinnerStyle";
+
+        style.innerHTML = `
+            @keyframes dilSaveSpin {
+                from {
+                    transform:rotate(0deg);
+                }
+
+                to {
+                    transform:rotate(360deg);
+                }
+            }
+        `;
+
+        document.head.appendChild(style);
+
+    }
+
+    try {
+
+        const user =
+            typeof auth !== "undefined"
+                ? auth.currentUser
+                : null;
+
+        if (!user) {
+            alert("⚠️ Please sign in first.");
+            return;
+        }
+
+        if (!productId) {
+            alert("❌ Course ID is missing.");
+            return;
+        }
+
+        /* =================================================
+           LOAD ORIGINAL COURSE
+        ================================================= */
+
+        const snapshot =
+            await db
+                .ref("products/" + productId)
+                .once("value");
+
+        if (!snapshot.exists()) {
+            alert("❌ Course could not be found.");
+            return;
+        }
+
+        const originalCourse =
+            snapshot.val();
+
+        /* =================================================
+           CREATOR SECURITY CHECK
+        ================================================= */
+
+        const creatorUid =
+            originalCourse.creatorUid ||
+            originalCourse.publisherId ||
+            "";
+
+        if (creatorUid !== user.uid) {
+
+            alert(
+                "🚫 You can only edit your own course."
+            );
+
+            return;
+        }
+
+        /* =================================================
+           FORM VALUES
+        ================================================= */
+
+        const getValue = (id) => {
+
+            const el =
+                document.getElementById(id);
+
+            return el
+                ? el.value.trim()
+                : "";
+
+        };
+
+        const title =
+            getValue("pName");
+
+        const price =
+            getValue("pPrice");
+
+        const strikePrice =
+            getValue("pStrikePrice");
+
+        const description =
+            getValue("pDesc");
+
+        const category =
+            getValue("courseCategory");
+
+        const difficulty =
+            getValue("courseLevel");
+
+        const duration =
+            getValue("courseDuration");
+
+        const uploaderNickname =
+            getValue("uploaderNickname");
+
+        /* =================================================
+           VALIDATION
+        ================================================= */
+
+        if (!title || !price) {
+
+            alert(
+                "⚠️ Please enter the course title and price."
+            );
+
+            return;
+        }
+
+        /* =================================================
+           COLLECT MODULES
+        ================================================= */
+
+        const modules = [];
+
+        document
+            .querySelectorAll(".course-module")
+            .forEach(
+                (moduleBox, moduleIndex) => {
+
+                    const lessonList = [];
+
+                    moduleBox
+                        .querySelectorAll(".lesson")
+                        .forEach(
+                            (lessonBox, lessonIndex) => {
+
+                                const videoSource =
+                                    lessonBox
+                                        .querySelector(
+                                            ".lessonVideoSource"
+                                        )
+                                        ?.value ||
+                                    "url";
+
+                                const videoUrl =
+                                    lessonBox.dataset.videoUrl ||
+                                    lessonBox
+                                        .querySelector(
+                                            ".lessonVideo"
+                                        )
+                                        ?.value
+                                        ?.trim() ||
+                                    "";
+
+                                const bunnyVideoId =
+                                    lessonBox.dataset.bunnyVideoId ||
+                                    "";
+
+                                const bunnyLibraryId =
+                                    lessonBox.dataset.bunnyLibraryId ||
+                                    "";
+
+                                /* =================================
+                                   BUNNY UPLOAD CHECK
+                                ================================= */
+
+                                if (
+                                    videoSource === "upload" &&
+                                    !bunnyVideoId
+                                ) {
+
+                                    throw new Error(
+                                        "Lesson " +
+                                        (lessonIndex + 1) +
+                                        " has an upload selected, " +
+                                        "but the Bunny video is not ready."
+                                    );
+
+                                }
+
+                                /* =================================
+                                   KEEP EXISTING LESSON ID
+                                ================================= */
+
+                                const existingLessonId =
+                                    lessonBox.dataset.lessonId ||
+                                    "";
+
+                                lessonList.push({
+
+                                    lessonId:
+                                        existingLessonId ||
+                                        "lesson_" +
+                                        Date.now() +
+                                        "_" +
+                                        moduleIndex +
+                                        "_" +
+                                        lessonIndex,
+
+                                    title:
+                                        lessonBox
+                                            .querySelector(
+                                                ".lessonTitle"
+                                            )
+                                            ?.value
+                                            ?.trim() ||
+                                        "",
+
+                                    videoSource:
+                                        videoSource === "upload"
+                                            ? "bunny"
+                                            : videoSource,
+
+                                    videoUrl:
+                                        videoUrl,
+
+                                    bunnyVideoId:
+                                        bunnyVideoId,
+
+                                    bunnyLibraryId:
+                                        bunnyLibraryId,
+
+                                    description:
+                                        lessonBox
+                                            .querySelector(
+                                                ".lessonDescription"
+                                            )
+                                            ?.value
+                                            ?.trim() ||
+                                        "",
+
+                                    pdf:
+                                        lessonBox
+                                            .querySelector(
+                                                ".lessonPdf"
+                                            )
+                                            ?.value
+                                            ?.trim() ||
+                                        "",
+
+                                    completed:
+                                        false,
+
+                                    order:
+                                        lessonIndex + 1
+
+                                });
+
+                            }
+                        );
+
+                    /* =============================================
+                       MODULE
+                    ============================================= */
+
+                    modules.push({
+
+                        moduleId:
+                            moduleBox.dataset.moduleId ||
+                            "module_" +
+                            Date.now() +
+                            "_" +
+                            moduleIndex,
+
+                        title:
+                            moduleBox
+                                .querySelector(
+                                    ".moduleTitle"
+                                )
+                                ?.value
+                                ?.trim() ||
+                            "",
+
+                        order:
+                            moduleIndex + 1,
+
+                        lessons:
+                            lessonList
+
+                    });
+
+                }
+            );
+
+        /* =================================================
+           KEEP EXISTING COVER IMAGE
+        ================================================= */
+
+        const existingImage =
+            originalCourse.image ||
+            originalCourse.coverImageUrl ||
+            "";
+
+        /* =================================================
+           CHECK FOR NEW COVER
+        ================================================= */
+
+        const photoInput =
+            document.getElementById("pPhotoUrl");
+
+        const newPhoto =
+            photoInput?.files?.[0] || null;
+
+        let finalImage =
+            existingImage;
+
+        /* =================================================
+           SAVE FUNCTION
+        ================================================= */
+
+        const performUpdate =
+            async (imageData) => {
+
+                if (imageData) {
+                    finalImage = imageData;
+                }
+
+                /* =============================================
+                   UPDATED COURSE DATA
+                ============================================= */
+
+                const updatedCourse = {
+
+                    title:
+                        title,
+
+                    productName:
+                        title,
+
+                    price:
+                        Number(price),
+
+                    strikePrice:
+                        Number(strikePrice || 0),
+
+                    description:
+                        description,
+
+                    image:
+                        finalImage,
+
+                    coverImageUrl:
+                        finalImage,
+
+                    productType:
+                        "course",
+
+                    category:
+                        category,
+
+                    difficulty:
+                        difficulty,
+
+                    duration:
+                        duration,
+
+                    publisherId:
+                        originalCourse.publisherId ||
+                        user.uid,
+
+                    creatorUid:
+                        originalCourse.creatorUid ||
+                        user.uid,
+
+                    creatorEmail:
+                        originalCourse.creatorEmail ||
+                        user.email ||
+                        "",
+
+                    creatorName:
+                        uploaderNickname ||
+                        originalCourse.creatorName ||
+                        "Unknown Creator",
+
+                    creatorElite:
+                        originalCourse.creatorElite === true,
+
+                    modules:
+                        modules,
+
+                    totalModules:
+                        modules.length,
+
+                    totalLessons:
+                        modules.reduce(
+                            (sum, module) =>
+                                sum +
+                                module.lessons.length,
+                            0
+                        ),
+
+                    updatedAt:
+                        firebase.database.ServerValue.TIMESTAMP
+
+                };
+
+                /* =============================================
+                   UPDATE EXISTING PRODUCT
+                ============================================= */
+
+                await db
+                    .ref(
+                        "products/" +
+                        productId
+                    )
+                    .update(
+                        updatedCourse
+                    );
+
+                /* =============================================
+                   UPDATE PUBLIC CREATOR
+                ============================================= */
+
+                await db
+                    .ref(
+                        "publicCreators/" +
+                        user.uid
+                    )
+                    .update({
+
+                        creatorName:
+                            uploaderNickname ||
+                            originalCourse.creatorName ||
+                            "Unknown Creator",
+
+                        updatedAt:
+                            firebase.database.ServerValue.TIMESTAMP
+
+                    })
+                    .catch(
+                        error => {
+
+                            console.warn(
+                                "⚠️ Public creator update failed:",
+                                error
+                            );
+
+                        }
+                    );
+
+                /* =============================================
+                   SUCCESS
+                ============================================= */
+
+                console.log(
+                    "✅ Course updated successfully:",
+                    productId,
+                    updatedCourse
+                );
+
+                alert(
+                    "✅ Course updated successfully!"
+                );
+
+                window.editingCourseId =
+                    null;
+
+                if (
+                    typeof showView ===
+                    "function"
+                ) {
+
+                    showView("market");
+
+                }
+
+            };
+
+        /* =================================================
+           NEW COVER IMAGE PROCESSING
+        ================================================= */
+
+        if (newPhoto) {
+
+            const reader =
+                new FileReader();
+
+            reader.onload =
+                function(event) {
+
+                    const img =
+                        new Image();
+
+                    img.onload =
+                        async function() {
+
+                            const canvas =
+                                document.createElement(
+                                    "canvas"
+                                );
+
+                            const maxWidth =
+                                500;
+
+                            const scaleSize =
+                                maxWidth /
+                                img.width;
+
+                            canvas.width =
+                                maxWidth;
+
+                            canvas.height =
+                                img.height *
+                                scaleSize;
+
+                            const ctx =
+                                canvas.getContext(
+                                    "2d"
+                                );
+
+                            ctx.drawImage(
+                                img,
+                                0,
+                                0,
+                                canvas.width,
+                                canvas.height
+                            );
+
+                            const compressedBase64 =
+                                canvas.toDataURL(
+                                    "image/jpeg",
+                                    0.7
+                                );
+
+                            await performUpdate(
+                                compressedBase64
+                            );
+
+                        };
+
+                    img.src =
+                        event.target.result;
+
+                };
+
+            reader.readAsDataURL(
+                newPhoto
+            );
+
+        } else {
+
+            await performUpdate(
+                null
+            );
+
+        }
+
+} catch (error) {
+
+    console.error(
+        "❌ Save edited course error:",
+        error
+    );
+
+    /* =============================================
+       RESTORE BUTTON AFTER FAILURE
+    ============================================= */
+
+    if (saveButton) {
+
+        saveButton.disabled = false;
+
+        saveButton.style.opacity = "1";
+
+        saveButton.style.cursor = "pointer";
+
+        saveButton.innerHTML =
+            originalButtonText;
+
+    }
+
+    alert(
+        "⚠️ Could not save course changes.\n\n" +
+        (
+            error.message ||
+            "Please try again."
+        )
+    );
+
+}
+};
 </script>
 <script>
   // =====================================================
@@ -9620,15 +11545,883 @@ function listenToAdminMetrics() {
                     <span style="font-size: 0.65rem; background: #e2e8f0; padding: 2px 6px; border-radius: 6px; font-weight: bold; margin-left: 4px;">${(data.productType || 'asset').toUpperCase()}</span><br>  
                     <span style="color: var(--primary); font-weight: 800; font-size: 0.85rem;">₦${Number(data.price || data.salePrice || 0).toLocaleString()}</span>  
                 </div>  
-                <div style="display: flex; gap: 6px;">  
-                    <button style="padding: 6px 12px; font-size: 0.75rem; font-weight: bold; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px;" onclick="approveAsset('${key}')">Approve</button>  
-                    <button style="padding: 6px 12px; font-size: 0.75rem; font-weight: bold; cursor: pointer; background: #dc2626; color: white; border: none; border-radius: 8px;" onclick="rejectAsset('${key}')">Reject</button>  
-                </div>  
+<div style="display:flex; gap:6px; align-items:center;">
+
+    <!-- 👁️ PREVIEW -->
+    <button
+        type="button"
+        style="
+            padding:6px 10px;
+            font-size:.75rem;
+            font-weight:bold;
+            cursor:pointer;
+            background:#334155;
+            color:white;
+            border:none;
+            border-radius:8px;
+        "
+        onclick="previewPendingAsset('${key}')"
+    >
+        👁️ Preview
+    </button>
+
+    <!-- ✅ APPROVE -->
+    <button
+        type="button"
+        style="
+            padding:6px 10px;
+            font-size:.75rem;
+            font-weight:bold;
+            cursor:pointer;
+            background:var(--primary);
+            color:white;
+            border:none;
+            border-radius:8px;
+        "
+        onclick="approveAsset('${key}')"
+    >
+        Approve
+    </button>
+
+    <!-- ❌ REJECT -->
+    <button
+        type="button"
+        style="
+            padding:6px 10px;
+            font-size:.75rem;
+            font-weight:bold;
+            cursor:pointer;
+            background:#dc2626;
+            color:white;
+            border:none;
+            border-radius:8px;
+        "
+        onclick="rejectAsset('${key}')"
+    >
+        Reject
+    </button>
+
+</div>
             `;  
             container.appendChild(row);  
         });  
     });  
 }  
+/* =====================================================
+   👁️ ADMIN — PREVIEW PENDING ASSET
+   ===================================================== */
+
+window.previewPendingAsset = async function(productId) {
+
+    try {
+
+        if (!productId) {
+            alert("❌ Product ID is missing.");
+            return;
+        }
+
+        console.log(
+            "👁️ Previewing pending asset:",
+            productId
+        );
+
+        const snapshot =
+            await db
+                .ref("products/" + productId)
+                .once("value");
+
+        if (!snapshot.exists()) {
+
+            alert(
+                "❌ This asset no longer exists."
+            );
+
+            return;
+        }
+
+        const product =
+            snapshot.val();
+
+        const title =
+            product.title ||
+            product.productName ||
+            "Untitled Asset";
+
+        const description =
+            product.description ||
+            "No description provided.";
+
+        const type =
+            product.productType ||
+            product.type ||
+            "ebook";
+
+        const isCourse =
+            type === "course";
+
+        const price =
+            Number(
+                product.price ||
+                product.salePrice ||
+                0
+            );
+
+        const creator =
+            product.creatorName ||
+            product.uploaderNickname ||
+            product.publisherName ||
+            "Unknown Creator";
+
+        const image =
+            product.image ||
+            product.coverImageUrl ||
+            product.thumbnail ||
+            "";
+
+        /* =============================================
+           CREATE PREVIEW OVERLAY
+        ============================================= */
+
+        const oldPreview =
+            document.getElementById(
+                "adminAssetPreviewOverlay"
+            );
+
+        if (oldPreview) {
+            oldPreview.remove();
+        }
+
+        const overlay =
+            document.createElement("div");
+
+        overlay.id =
+            "adminAssetPreviewOverlay";
+
+        overlay.style.cssText = `
+            position:fixed;
+            inset:0;
+            z-index:99999;
+            background:rgba(15,23,42,.75);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:15px;
+            box-sizing:border-box;
+        `;
+
+        /* =============================================
+           BUILD COURSE CURRICULUM
+        ============================================= */
+
+        let curriculumHTML = "";
+
+        if (isCourse) {
+
+            const modules =
+                Array.isArray(product.modules)
+                    ? product.modules
+                    : [];
+
+            if (modules.length) {
+
+                curriculumHTML = `
+                    <div style="
+                        margin-top:20px;
+                    ">
+
+                        <h3 style="
+                            margin:0 0 12px;
+                            color:#0f172a;
+                            font-size:1rem;
+                        ">
+                            📚 Course Content
+                        </h3>
+
+                        ${modules.map(
+                            (module, moduleIndex) => {
+
+                                const lessons =
+                                    Array.isArray(
+                                        module.lessons
+                                    )
+                                    ? module.lessons
+                                    : [];
+
+                                return `
+                                    <div style="
+                                        border:1px solid #e2e8f0;
+                                        border-radius:12px;
+                                        margin-bottom:10px;
+                                        overflow:hidden;
+                                    ">
+
+                                        <div style="
+                                            background:#f8fafc;
+                                            padding:11px;
+                                            font-weight:900;
+                                            color:#0f172a;
+                                        ">
+                                            Module ${
+                                                moduleIndex + 1
+                                            }:
+                                            ${
+                                                module.title ||
+                                                "Untitled Module"
+                                            }
+                                        </div>
+
+                                        <div style="
+                                            padding:8px 11px;
+                                        ">
+
+                                            ${
+                                                lessons.length
+                                                ? lessons.map(
+                                                    (
+                                                        lesson,
+                                                        lessonIndex
+                                                    ) => `
+
+                                                        <button
+                                                            type="button"
+                                                            onclick="
+                                                                playAdminPreviewVideo(
+                                                                    '${productId}',
+                                                                    ${moduleIndex},
+                                                                    ${lessonIndex}
+                                                                )
+                                                            "
+                                                            style="
+                                                                width:100%;
+                                                                text-align:left;
+                                                                border:0;
+                                                                background:#fff;
+                                                                padding:10px 5px;
+                                                                border-bottom:1px solid #f1f5f9;
+                                                                cursor:pointer;
+                                                                color:#334155;
+                                                                font-size:.78rem;
+                                                            "
+                                                        >
+                                                            ▶️
+                                                            ${
+                                                                lessonIndex + 1
+                                                            }.
+                                                            ${
+                                                                lesson.title ||
+                                                                "Untitled Lesson"
+                                                            }
+                                                        </button>
+
+                                                    `
+                                                ).join("")
+                                                : `
+                                                    <div style="
+                                                        color:#94a3b8;
+                                                        font-size:.75rem;
+                                                        padding:8px 0;
+                                                    ">
+                                                        No lessons.
+                                                    </div>
+                                                `
+                                            }
+
+                                        </div>
+
+                                    </div>
+                                `;
+
+                            }
+                        ).join("")}
+
+                    </div>
+                `;
+
+            } else {
+
+                curriculumHTML = `
+                    <div style="
+                        margin-top:20px;
+                        padding:15px;
+                        background:#fff7ed;
+                        border:1px solid #fed7aa;
+                        border-radius:12px;
+                        color:#9a3412;
+                        font-size:.8rem;
+                    ">
+                        ⚠️ This course has no curriculum.
+                    </div>
+                `;
+
+            }
+
+        }
+
+        /* =============================================
+           PREVIEW HTML
+        ============================================= */
+
+        overlay.innerHTML = `
+
+            <div style="
+                width:100%;
+                max-width:850px;
+                max-height:92vh;
+                overflow-y:auto;
+                background:#fff;
+                border-radius:18px;
+                box-shadow:0 20px 60px rgba(0,0,0,.3);
+                position:relative;
+            ">
+
+                <!-- HEADER -->
+
+                <div style="
+                    position:sticky;
+                    top:0;
+                    z-index:5;
+                    background:#0f172a;
+                    color:#fff;
+                    padding:14px 16px;
+                    display:flex;
+                    align-items:center;
+                    justify-content:space-between;
+                    gap:10px;
+                ">
+
+                    <div>
+                        <div style="
+                            font-size:.65rem;
+                            opacity:.7;
+                            font-weight:800;
+                        ">
+                            ADMIN CONTENT PREVIEW
+                        </div>
+
+                        <div style="
+                            font-size:1rem;
+                            font-weight:900;
+                        ">
+                            ${title}
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        onclick="
+                            document
+                                .getElementById(
+                                    'adminAssetPreviewOverlay'
+                                )
+                                ?.remove();
+                        "
+                        style="
+                            border:0;
+                            background:#dc2626;
+                            color:#fff;
+                            width:34px;
+                            height:34px;
+                            border-radius:50%;
+                            cursor:pointer;
+                            font-size:1rem;
+                            font-weight:900;
+                        "
+                    >
+                        ✕
+                    </button>
+
+                </div>
+
+
+                <!-- IMAGE -->
+
+                ${
+                    image
+                    ? `
+                        <img
+                            src="${image}"
+                            alt="${title}"
+                            style="
+                                width:100%;
+                                max-height:300px;
+                                object-fit:cover;
+                                display:block;
+                            "
+                        >
+                    `
+                    : ""
+                }
+
+
+                <!-- CONTENT -->
+
+                <div style="
+                    padding:18px;
+                ">
+
+                    <div style="
+                        display:flex;
+                        flex-wrap:wrap;
+                        gap:8px;
+                        align-items:center;
+                    ">
+
+                        <span style="
+                            background:#e2e8f0;
+                            color:#334155;
+                            padding:5px 9px;
+                            border-radius:12px;
+                            font-size:.65rem;
+                            font-weight:900;
+                        ">
+                            ${
+                                isCourse
+                                ? "🎥 COURSE"
+                                : "📚 EBOOK"
+                            }
+                        </span>
+
+                        <span style="
+                            font-weight:900;
+                            color:#0f172a;
+                        ">
+                            ₦${price.toLocaleString()}
+                        </span>
+
+                    </div>
+
+
+                    <div style="
+                        margin-top:10px;
+                        font-size:.78rem;
+                        color:#64748b;
+                    ">
+                        Created by
+                        <strong style="color:#0f172a;">
+                            ${creator}
+                        </strong>
+                    </div>
+
+
+                    <div style="
+                        margin-top:18px;
+                        color:#475569;
+                        font-size:.85rem;
+                        line-height:1.7;
+                        white-space:pre-wrap;
+                    ">
+                        ${description}
+                    </div>
+
+
+                    ${curriculumHTML}
+
+
+                    <!-- EBOOK ACCESS -->
+
+                    ${
+                        !isCourse
+                        ? `
+                            <div style="
+                                margin-top:20px;
+                                padding:14px;
+                                background:#f8fafc;
+                                border:1px solid #e2e8f0;
+                                border-radius:12px;
+                            ">
+
+                                <strong style="
+                                    display:block;
+                                    color:#0f172a;
+                                    margin-bottom:6px;
+                                ">
+                                    🔗 E-Book Delivery
+                                </strong>
+
+                                <a
+                                    href="${
+                                        product.ebookAccessLink ||
+                                        product.deliveryUrl ||
+                                        ""
+                                    }"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style="
+                                        color:#2563eb;
+                                        font-size:.78rem;
+                                        word-break:break-all;
+                                    "
+                                >
+                                    Open actual e-book resource →
+                                </a>
+
+                            </div>
+                        `
+                        : ""
+                    }
+
+
+                    <!-- MODERATION -->
+
+                    <div style="
+                        margin-top:22px;
+                        padding:15px;
+                        background:#f8fafc;
+                        border:1px solid #e2e8f0;
+                        border-radius:13px;
+                    ">
+
+                        <div style="
+                            font-weight:900;
+                            color:#0f172a;
+                            margin-bottom:10px;
+                        ">
+                            Moderation
+                        </div>
+
+                        <div style="
+                            display:grid;
+                            grid-template-columns:1fr 1fr;
+                            gap:10px;
+                        ">
+
+                            <button
+                                type="button"
+                                onclick="
+                                    approveAsset('${productId}');
+                                    document
+                                        .getElementById(
+                                            'adminAssetPreviewOverlay'
+                                        )
+                                        ?.remove();
+                                "
+                                style="
+                                    border:0;
+                                    padding:12px;
+                                    border-radius:10px;
+                                    background:var(--primary);
+                                    color:#fff;
+                                    font-weight:900;
+                                    cursor:pointer;
+                                "
+                            >
+                                ✅ Approve
+                            </button>
+
+                            <button
+                                type="button"
+                                onclick="
+                                    rejectAsset('${productId}');
+                                    document
+                                        .getElementById(
+                                            'adminAssetPreviewOverlay'
+                                        )
+                                        ?.remove();
+                                "
+                                style="
+                                    border:0;
+                                    padding:12px;
+                                    border-radius:10px;
+                                    background:#dc2626;
+                                    color:#fff;
+                                    font-weight:900;
+                                    cursor:pointer;
+                                "
+                            >
+                                ❌ Reject
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        `;
+
+        document.body.appendChild(
+            overlay
+        );
+
+    } catch (error) {
+
+        console.error(
+            "❌ Admin preview error:",
+            error
+        );
+
+        alert(
+            "⚠️ Could not preview this asset.\n\n" +
+            (
+                error.message ||
+                "Please try again."
+            )
+        );
+
+    }
+
+};
+/* =====================================================
+   🎥 ADMIN — PLAY BUNNY VIDEO PREVIEW
+   ===================================================== */
+
+window.playAdminPreviewVideo = async function(
+    productId,
+    moduleIndex,
+    lessonIndex
+) {
+
+    try {
+
+        const snapshot =
+            await db
+                .ref("products/" + productId)
+                .once("value");
+
+        if (!snapshot.exists()) {
+            alert("❌ Course not found.");
+            return;
+        }
+
+        const product =
+            snapshot.val();
+
+        const modules =
+            Array.isArray(product.modules)
+                ? product.modules
+                : [];
+
+        const module =
+            modules[moduleIndex];
+
+        if (!module) {
+            alert("❌ Module not found.");
+            return;
+        }
+
+        const lessons =
+            Array.isArray(module.lessons)
+                ? module.lessons
+                : [];
+
+        const lesson =
+            lessons[lessonIndex];
+
+        if (!lesson) {
+            alert("❌ Lesson not found.");
+            return;
+        }
+
+        const videoUrl =
+            lesson.videoUrl || "";
+
+        const bunnyVideoId =
+            lesson.bunnyVideoId || "";
+
+        const bunnyLibraryId =
+            lesson.bunnyLibraryId || "";
+
+        /* =================================================
+           🐰 BUILD BUNNY URL
+        ================================================= */
+
+        let finalVideoUrl =
+            videoUrl;
+
+        if (
+            bunnyVideoId &&
+            bunnyLibraryId
+        ) {
+
+            finalVideoUrl =
+                "https://iframe.mediadelivery.net/embed/" +
+                bunnyLibraryId +
+                "/" +
+                bunnyVideoId;
+
+        }
+
+        if (!finalVideoUrl) {
+
+            alert(
+                "⚠️ This lesson does not have a playable video."
+            );
+
+            return;
+
+        }
+
+        console.log(
+            "🎥 Admin preview video:",
+            {
+                lesson:
+                    lesson.title,
+                videoUrl:
+                    finalVideoUrl
+            }
+        );
+
+
+        /* =================================================
+           REMOVE OLD PLAYER
+        ================================================= */
+
+        const oldPlayer =
+            document.getElementById(
+                "adminVideoPreviewOverlay"
+            );
+
+        if (oldPlayer) {
+            oldPlayer.remove();
+        }
+
+
+        /* =================================================
+           CREATE VIDEO OVERLAY
+        ================================================= */
+
+        const overlay =
+            document.createElement("div");
+
+        overlay.id =
+            "adminVideoPreviewOverlay";
+
+        overlay.style.cssText = `
+            position:fixed;
+            inset:0;
+            z-index:100000;
+            background:rgba(0,0,0,.85);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:15px;
+            box-sizing:border-box;
+        `;
+
+
+        overlay.innerHTML = `
+
+            <div style="
+                width:100%;
+                max-width:850px;
+                background:#0f172a;
+                border-radius:16px;
+                overflow:hidden;
+                box-shadow:0 20px 60px rgba(0,0,0,.5);
+            ">
+
+                <div style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    gap:10px;
+                    padding:12px 15px;
+                    color:#fff;
+                ">
+
+                    <div style="
+                        font-weight:900;
+                        font-size:.9rem;
+                    ">
+                        🎥 ${
+                            lesson.title ||
+                            "Lesson Preview"
+                        }
+                    </div>
+
+                    <button
+                        type="button"
+                        onclick="
+                            document
+                                .getElementById(
+                                    'adminVideoPreviewOverlay'
+                                )
+                                ?.remove();
+                        "
+                        style="
+                            border:0;
+                            background:#dc2626;
+                            color:#fff;
+                            width:34px;
+                            height:34px;
+                            border-radius:50%;
+                            cursor:pointer;
+                            font-weight:900;
+                        "
+                    >
+                        ✕
+                    </button>
+
+                </div>
+
+
+                <div style="
+                    width:100%;
+                    aspect-ratio:16/9;
+                    background:#000;
+                ">
+
+                    <iframe
+                        src="${finalVideoUrl}?autoplay=1"
+                        style="
+                            width:100%;
+                            height:100%;
+                            border:0;
+                            display:block;
+                        "
+                        allow="
+                            autoplay;
+                            fullscreen;
+                            picture-in-picture
+                        "
+                        allowfullscreen
+                    ></iframe>
+
+                </div>
+
+
+                <div style="
+                    padding:12px 15px;
+                    color:#cbd5e1;
+                    font-size:.72rem;
+                ">
+                    Module ${
+                        moduleIndex + 1
+                    }
+                    · Lesson ${
+                        lessonIndex + 1
+                    }
+                </div>
+
+            </div>
+
+        `;
+
+        document.body.appendChild(
+            overlay
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "❌ Admin video preview error:",
+            error
+        );
+
+        alert(
+            "⚠️ Could not play this lesson video.\n\n" +
+            (
+                error.message ||
+                "Please try again."
+            )
+        );
+
+    }
+
+};
   
 // ==========================================  
 // ADMIN UTILITY ACTIONS  
